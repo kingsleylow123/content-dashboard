@@ -23,8 +23,8 @@ async function runSync() {
   let synced = 0
   const errors: string[] = []
 
-  const igEnabled = !!(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID)
-  const ytEnabled = !!(process.env.YOUTUBE_API_KEY && process.env.YOUTUBE_CHANNEL_ID)
+  const igEnabled = !!(process.env.APIFY_API_TOKEN && process.env.IG_USERNAME)
+  const ytEnabled = !!(process.env.APIFY_API_TOKEN && process.env.YT_CHANNEL_URL)
 
   await Promise.all([
     igEnabled ? syncInstagram() : Promise.resolve(),

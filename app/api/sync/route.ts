@@ -9,11 +9,11 @@ export async function POST() {
   let synced = 0
   const errors: string[] = []
 
-  const igEnabled = !!(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_USER_ID)
-  const ytEnabled = !!(process.env.YOUTUBE_API_KEY && process.env.YOUTUBE_CHANNEL_ID)
+  const igEnabled = !!(process.env.APIFY_API_TOKEN && process.env.IG_USERNAME)
+  const ytEnabled = !!(process.env.APIFY_API_TOKEN && process.env.YT_CHANNEL_URL)
 
   if (!igEnabled && !ytEnabled) {
-    return NextResponse.json({ synced: 0, message: 'No API credentials configured yet. Add INSTAGRAM_ACCESS_TOKEN and YOUTUBE_API_KEY to .env.local' })
+    return NextResponse.json({ synced: 0, message: 'No credentials configured. Add APIFY_API_TOKEN + IG_USERNAME and/or YT_CHANNEL_URL to .env.local' })
   }
 
   await Promise.all([
