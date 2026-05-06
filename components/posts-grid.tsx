@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { formatNumber } from '@/lib/analytics'
+import { thumb } from '@/lib/thumb'
 import { ContentPost } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import {
@@ -116,7 +117,7 @@ export function PostsGrid({ posts, total, onSortChange, onLoadMore, loading }: P
                             {post.thumbnail_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={post.thumbnail_url}
+                                src={thumb(post.thumbnail_url) ?? ''}
                                 alt={text}
                                 className="h-full w-full object-cover transition-transform group-hover:scale-105"
                               />

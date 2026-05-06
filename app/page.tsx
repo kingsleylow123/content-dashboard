@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [platform, setPlatform] = useState<PlatformFilter>('all')
   const [days, setDays] = useState<DaysFilter>(90)
   const [sort, setSort] = useState('views')
+  const [includeShorts, setIncludeShorts] = useState(true)
   const [postOffset, setPostOffset] = useState(0)
 
   const [kpis, setKpis] = useState<KpiData>(EMPTY_KPI)
@@ -56,7 +57,7 @@ export default function Dashboard() {
   const fetchPosts = useCallback(async (offset = 0, append = false) => {
     setPostsLoading(true)
     try {
-      const res = await fetch(`/api/posts?platform=${platform}&days=${days}&sort=${sort}&limit=10&offset=${offset}`)
+      const res = await fetch(`/api/posts?platform=${platform}&days=${days}&sort=${sort}&limit=10&offset=${offset}&shorts=${includeShorts}`)
       const data = await res.json()
       setPosts(prev => append ? [...prev, ...(data.posts ?? [])] : (data.posts ?? []))
       setTotalPosts(data.total ?? 0)
@@ -65,7 +66,7 @@ export default function Dashboard() {
     } finally {
       setPostsLoading(false)
     }
-  }, [platform, days, sort])
+  }, [platform, days, sort, includeShorts])
 
   useEffect(() => {
     setPostOffset(0)
@@ -120,8 +121,10 @@ export default function Dashboard() {
             <Filters
               platform={platform}
               days={days}
+              includeShorts={includeShorts}
               onPlatformChange={p => { setPlatform(p); setPostOffset(0) }}
               onDaysChange={d => { setDays(d); setPostOffset(0) }}
+              onShortsToggle={v => { setIncludeShorts(v); setPostOffset(0) }}
             />
             <button
               onClick={handleSync}

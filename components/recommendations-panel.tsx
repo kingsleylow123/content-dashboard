@@ -2,6 +2,7 @@
 
 import { ContentPost } from '@/lib/supabase'
 import { formatNumber } from '@/lib/analytics'
+import { thumb } from '@/lib/thumb'
 import { Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -132,7 +133,7 @@ export function RecommendationsPanel({ posts }: RecommendationsPanelProps) {
                   {rec.post.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={rec.post.thumbnail_url}
+                      src={thumb(rec.post.thumbnail_url) ?? ''}
                       alt={text}
                       className="h-full w-full object-cover"
                     />

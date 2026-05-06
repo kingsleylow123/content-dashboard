@@ -25,6 +25,7 @@ export interface ContentPost {
   impressions: number
   engagement_rate: number
   watch_time_mins: number
+  video_type: string | null  // 'video' | 'short' (YouTube only)
   synced_at: string
   created_at: string
 }

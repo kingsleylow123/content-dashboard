@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const sort = searchParams.get('sort') ?? 'views'
   const limit = parseInt(searchParams.get('limit') ?? '10', 10)
   const offset = parseInt(searchParams.get('offset') ?? '0', 10)
+  const includeShorts = searchParams.get('shorts') !== 'false'
 
   const validSorts: Record<string, string> = {
     views: 'views',
@@ -31,6 +32,10 @@ export async function GET(req: NextRequest) {
 
     if (platform !== 'all') {
       query = query.eq('platform', platform)
+    }
+    // Exclude YouTube Shorts when toggle is off
+    if (!includeShorts) {
+      query = query.or('platform.eq.instagram,video_type.neq.short')
     }
 
     const { data, error, count } = await query
