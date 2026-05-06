@@ -46,8 +46,7 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
   if (!APIFY_TOKEN || !IG_USERNAME) return []
 
   const items = await runApifyActor({
-    username: IG_USERNAME,
-    usernames: [IG_USERNAME],
+    username: [IG_USERNAME],   // actor expects array
     resultsLimit: 25,
     maxPostCount: 25,
     resultsType: 'posts',
