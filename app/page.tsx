@@ -8,6 +8,7 @@ import { ViewsReachChart } from '@/components/views-reach-chart'
 import { EngagementChart } from '@/components/engagement-chart'
 import { PostsGrid } from '@/components/posts-grid'
 import { AnalyzePanel } from '@/components/analyze-panel'
+import { RecommendationsPanel } from '@/components/recommendations-panel'
 import { KpiData, ChartPoint } from '@/lib/analytics'
 import { ContentPost } from '@/lib/supabase'
 
@@ -83,17 +84,14 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/sync', { method: 'POST' })
       const data = await res.json()
-      if (data.message) {
-        setSyncMsg(data.message)
-      } else {
-        setSyncMsg(`Synced ${data.synced ?? 0} posts${data.errors?.length ? ` (${data.errors.join(', ')})` : ''}`)
-        await Promise.all([fetchAnalytics(), fetchPosts(0, false)])
-      }
+      // Always re-fetch analytics + posts after sync (followers update immediately)
+      await Promise.all([fetchAnalytics(), fetchPosts(0, false)])
+      setSyncMsg(data.message ?? `Synced ${data.synced ?? 0} posts`)
     } catch {
       setSyncMsg('Sync failed')
     } finally {
       setSyncing(false)
-      setTimeout(() => setSyncMsg(''), 6000)
+      setTimeout(() => setSyncMsg(''), 8000)
     }
   }
 
@@ -167,6 +165,9 @@ export default function Dashboard() {
             <EngagementChart data={engagementChart} />
           </div>
         </div>
+
+        {/* Recommendations — computed from live post data, updates on sync */}
+        <RecommendationsPanel posts={posts} />
 
         {/* Posts Grid */}
         <PostsGrid

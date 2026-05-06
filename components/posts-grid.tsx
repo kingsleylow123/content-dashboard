@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { formatNumber } from '@/lib/analytics'
 import { ContentPost } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -115,12 +114,11 @@ export function PostsGrid({ posts, total, onSortChange, onLoadMore, loading }: P
                           {/* 72px thumbnail */}
                           <div className="relative h-[72px] w-[72px] flex-shrink-0 overflow-hidden rounded-lg bg-zinc-800 border border-zinc-700/50">
                             {post.thumbnail_url ? (
-                              <Image
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
                                 src={post.thumbnail_url}
                                 alt={text}
-                                fill
-                                className="object-cover transition-transform group-hover:scale-105"
-                                unoptimized
+                                className="h-full w-full object-cover transition-transform group-hover:scale-105"
                               />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-zinc-700 text-xs">

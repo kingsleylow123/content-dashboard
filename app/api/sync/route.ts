@@ -3,58 +3,80 @@ import { supabase } from '@/lib/supabase'
 import { fetchIGPosts, fetchIGProfile } from '@/lib/instagram'
 import { fetchYTPosts, fetchYTProfile } from '@/lib/youtube'
 
-// Vercel hobby plan caps regular functions at 10s.
-// We fire sync tasks and return immediately — results land in ~60-120s via Apify.
-// The cron job handles the scheduled full sync.
+// Strategy:
+// 1. Profile fetches are FAST (~2s) — always complete within timeout → followers update every sync
+// 2. Post fetches are SLOW (~60-120s) — fire in background, return partial:true
+// This ensures Sync Now always updates followers + triggers post refresh in background
 
 export async function POST() {
   const igEnabled = !!(process.env.APIFY_API_TOKEN && process.env.IG_USERNAME)
   const ytEnabled = !!(process.env.APIFY_API_TOKEN && process.env.YT_CHANNEL_URL)
 
   if (!igEnabled && !ytEnabled) {
-    return NextResponse.json({
-      synced: 0,
-      message: 'No credentials configured. Add APIFY_API_TOKEN + IG_USERNAME / YT_CHANNEL_URL.'
-    })
+    return NextResponse.json({ synced: 0, message: 'No credentials configured.' })
   }
 
-  // Run sync without blocking the response — fire and forget
-  // Results will be in Supabase in ~60-120s; refresh the page to see them
-  const syncPromise = runSync(igEnabled, ytEnabled)
+  const errors: string[] = []
 
-  // Give it 8s max before returning (stays within 10s function limit)
-  const result = await Promise.race([
-    syncPromise,
-    new Promise<{ synced: number; errors: string[]; partial: boolean }>(resolve =>
-      setTimeout(() => resolve({ synced: 0, errors: [], partial: true }), 8000)
+  // Step 1: Profile fetches first (fast ~2s each) — always complete within 10s limit
+  const [igProfile, ytProfile] = await Promise.all([
+    igEnabled ? fetchIGProfile().catch(() => null) : Promise.resolve(null),
+    ytEnabled ? fetchYTProfile().catch(() => null) : Promise.resolve(null),
+  ])
+
+  // Persist follower counts immediately
+  if (igProfile?.followers) {
+    await supabase.from('profile_snapshots').insert({
+      platform: 'instagram',
+      followers: igProfile.followers,
+      following: igProfile.following,
+      post_count: igProfile.post_count,
+    }).then(() => null, () => null)
+  }
+  if (ytProfile?.followers) {
+    await supabase.from('profile_snapshots').insert({
+      platform: 'youtube',
+      followers: ytProfile.followers,
+      post_count: ytProfile.post_count,
+    }).then(() => null, () => null)
+  }
+
+  // Step 2: Posts are slow — race against 4s, fire in background either way
+  const postsPromise = syncPosts(igEnabled, ytEnabled, errors)
+  const postsResult = await Promise.race([
+    postsPromise,
+    new Promise<{ synced: number; partial: boolean }>(resolve =>
+      setTimeout(() => resolve({ synced: 0, partial: true }), 4000)
     ),
   ])
 
-  if (result.partial) {
-    return NextResponse.json({
-      synced: 0,
-      partial: true,
-      message: 'Sync started — Apify is scraping in the background. Refresh in ~90 seconds to see updated data.',
-    })
-  }
-
-  return NextResponse.json({ synced: result.synced, errors: result.errors })
+  return NextResponse.json({
+    synced: postsResult.synced,
+    followers: {
+      instagram: igProfile?.followers ?? null,
+      youtube: ytProfile?.followers ?? null,
+    },
+    partial: postsResult.partial,
+    errors,
+    message: postsResult.partial
+      ? `Followers updated ✓ — Posts syncing in background (~90s). Refresh to see new posts.`
+      : `Synced ${postsResult.synced} posts + updated followers ✓`,
+  })
 }
 
-async function runSync(igEnabled: boolean, ytEnabled: boolean) {
+async function syncPosts(igEnabled: boolean, ytEnabled: boolean, errors: string[]) {
   let synced = 0
-  const errors: string[] = []
 
   await Promise.all([
     igEnabled ? syncIG() : Promise.resolve(),
     ytEnabled ? syncYT() : Promise.resolve(),
   ])
 
-  return { synced, errors, partial: false }
+  return { synced, partial: false }
 
   async function syncIG() {
     try {
-      const [posts, profile] = await Promise.all([fetchIGPosts(), fetchIGProfile()])
+      const posts = await fetchIGPosts()
       if (posts.length) {
         const { error } = await supabase
           .from('content_analytics')
@@ -62,16 +84,12 @@ async function runSync(igEnabled: boolean, ytEnabled: boolean) {
         if (error) throw error
         synced += posts.length
       }
-      await supabase.from('profile_snapshots').insert({
-        platform: 'instagram', followers: profile.followers,
-        following: profile.following, post_count: profile.post_count,
-      })
-    } catch (e) { errors.push(`Instagram: ${(e as Error).message}`) }
+    } catch (e) { errors.push(`Instagram posts: ${(e as Error).message}`) }
   }
 
   async function syncYT() {
     try {
-      const [posts, profile] = await Promise.all([fetchYTPosts(), fetchYTProfile()])
+      const posts = await fetchYTPosts()
       if (posts.length) {
         const { error } = await supabase
           .from('content_analytics')
@@ -79,9 +97,6 @@ async function runSync(igEnabled: boolean, ytEnabled: boolean) {
         if (error) throw error
         synced += posts.length
       }
-      await supabase.from('profile_snapshots').insert({
-        platform: 'youtube', followers: profile.followers, post_count: profile.post_count,
-      })
-    } catch (e) { errors.push(`YouTube: ${(e as Error).message}`) }
+    } catch (e) { errors.push(`YouTube posts: ${(e as Error).message}`) }
   }
 }
