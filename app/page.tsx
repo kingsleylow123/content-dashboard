@@ -147,16 +147,13 @@ export default function Dashboard() {
 
         {/* KPI Cards */}
         <div className={`grid gap-4 ${analyticsLoading ? 'opacity-60' : ''} grid-cols-2 md:grid-cols-3 lg:grid-cols-6`}>
-          <KpiCard label="Views" metric={kpis.views} />
-          <KpiCard label="Reach" metric={kpis.reach} />
-          <KpiCard label="Eng. Rate" metric={kpis.engagement_rate} format="percent" />
-          <KpiCard label="Followers" metric={kpis.followers} />
-          <KpiCard label="Shares" metric={kpis.shares} />
-          <KpiCard
-            label="Saves"
-            metric={kpis.saves}
-            unavailable={isYT}
-          />
+          <KpiCard label="Views"      metric={kpis.views} />
+          <KpiCard label="Reach"      metric={kpis.reach} />
+          <KpiCard label="Eng. Rate"  metric={kpis.engagement_rate} format="percent" />
+          <KpiCard label="Followers"  metric={kpis.followers} />
+          {/* Shares & Saves: not available via public scraping — require official IG API */}
+          <KpiCard label="Shares" metric={kpis.shares} unavailable={platform !== 'youtube'} />
+          <KpiCard label="Saves"  metric={kpis.saves}  unavailable={platform !== 'youtube'} />
         </div>
 
         {/* Charts */}
