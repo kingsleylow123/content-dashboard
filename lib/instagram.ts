@@ -1,7 +1,7 @@
-// Instagram data via Apify instagram-reel-scraper (no OAuth needed)
+// Instagram data via Apify instagram-scraper (no OAuth needed)
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN
 const IG_USERNAME = process.env.IG_USERNAME
-const ACTOR_ID = 'xMc5Ga1oCONPmWJIa' // apify/instagram-reel-scraper
+const ACTOR_ID = 'shu8hvrXbJbY3Eb9W' // apify/instagram-scraper — more robust than reel-scraper
 
 export interface IGPost {
   platform: 'instagram'
@@ -46,23 +46,26 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
   if (!APIFY_TOKEN || !IG_USERNAME) return []
 
   const items = await runApifyActor({
-    username: [IG_USERNAME],   // actor expects array
+    directUrls: [`https://www.instagram.com/${IG_USERNAME}/`],
     resultsLimit: 25,
-    maxPostCount: 25,
     resultsType: 'posts',
   }) as Record<string, unknown>[]
 
-  return items.map(item => {
+  // Filter out error items
+  const valid = items.filter(i => !(i as Record<string, unknown>).error)
+
+  return valid.map(item => {
     const likes    = Number(item.likesCount    ?? item.likes    ?? 0)
     const comments = Number(item.commentsCount ?? item.comments ?? 0)
     const shares   = Number(item.sharesCount   ?? item.shares   ?? 0)
     const saves    = Number(item.savesCount    ?? item.saves    ?? 0)
     const views    = Number(item.videoViewCount ?? item.videoPlayCount ?? item.playCount ?? item.views ?? 0)
-    const reach    = views || (likes * 10)
+    const reach    = views || (likes > 0 ? likes * 10 : 0)
     const engagement_rate = reach > 0
       ? ((likes + comments + shares + saves) / reach) * 100
       : 0
 
+    const shortCode = String(item.shortCode ?? item.id ?? '')
     const published_at =
       (item.timestamp as string) ??
       (item.takenAt   as string) ??
@@ -71,15 +74,15 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
 
     return {
       platform: 'instagram' as const,
-      post_id: String(item.id ?? item.shortCode ?? item.postId ?? Math.random()),
+      post_id: String((item.id ?? shortCode) || `ig_${Date.now()}_${Math.random()}`),
       title: null,
-      caption: (String(item.caption ?? item.text ?? '')).slice(0, 500) || null,
+      caption: String(item.caption ?? item.text ?? '').slice(0, 500) || null,
       thumbnail_url: String(item.displayUrl ?? item.thumbnailUrl ?? item.previewUrl ?? '') || null,
-      permalink: String(item.url ?? item.postUrl ?? `https://instagram.com/p/${item.shortCode ?? ''}`) || null,
+      permalink: String(item.url ?? (shortCode ? `https://www.instagram.com/p/${shortCode}/` : '')) || null,
       published_at: new Date(published_at).toISOString(),
       views, likes, comments, shares, saves, reach,
-      impressions: views,
+      impressions: views || likes,
       engagement_rate: Math.round(engagement_rate * 100) / 100,
     }
-  }).filter(p => p.published_at)
+  }).filter(p => !p.post_id.startsWith('ig_') || p.likes > 0)
 }

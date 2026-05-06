@@ -7,6 +7,7 @@ import { KpiCard } from '@/components/kpi-card'
 import { ViewsReachChart } from '@/components/views-reach-chart'
 import { EngagementChart } from '@/components/engagement-chart'
 import { PostsGrid } from '@/components/posts-grid'
+import { AnalyzePanel } from '@/components/analyze-panel'
 import { KpiData, ChartPoint } from '@/lib/analytics'
 import { ContentPost } from '@/lib/supabase'
 
@@ -21,7 +22,7 @@ const EMPTY_KPI: KpiData = {
 
 export default function Dashboard() {
   const [platform, setPlatform] = useState<PlatformFilter>('all')
-  const [days, setDays] = useState<DaysFilter>(30)
+  const [days, setDays] = useState<DaysFilter>(90)
   const [sort, setSort] = useState('views')
   const [postOffset, setPostOffset] = useState(0)
 
@@ -134,6 +135,9 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* AI Analyze panel */}
+        <AnalyzePanel platform={platform} days={days} />
 
         {syncMsg && (
           <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-400">

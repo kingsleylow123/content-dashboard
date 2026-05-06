@@ -1,5 +1,6 @@
 // YouTube data via Apify streamers/youtube-scraper (no OAuth needed)
-const APIFY_TOKEN  = process.env.APIFY_API_TOKEN
+// Confirmed field names from live run: viewCount, likes, commentsCount, date, thumbnailUrl, id, url
+const APIFY_TOKEN    = process.env.APIFY_API_TOKEN
 const YT_CHANNEL_URL = process.env.YT_CHANNEL_URL  // e.g. https://www.youtube.com/@handle
 const ACTOR_ID = 'streamers~youtube-scraper'
 
@@ -55,28 +56,36 @@ export async function fetchYTPosts(): Promise<YTPost[]> {
   }) as Record<string, unknown>[]
 
   return items
-    .filter(item => item.url || item.id)
+    .filter(item => (item.url || item.id) && !item.error)
     .map(item => {
+      // Confirmed field names from live Apify run
       const views    = Number(item.viewCount    ?? item.views    ?? 0)
-      const likes    = Number(item.likeCount    ?? item.likes    ?? 0)
-      const comments = Number(item.commentCount ?? item.comments ?? 0)
+      const likes    = Number(item.likes        ?? item.likeCount ?? 0)   // actor uses "likes"
+      const comments = Number(item.commentsCount ?? item.commentCount ?? 0) // actor uses "commentsCount"
       const engagement_rate = views > 0 ? ((likes + comments) / views) * 100 : 0
 
-      const videoId = String(item.id ?? '').replace('yt_', '')
-      const url = String(item.url ?? (videoId ? `https://www.youtube.com/watch?v=${videoId}` : ''))
+      const videoId = String(item.id ?? '').replace(/^yt_/, '')
+      const permalink = String(item.url ?? (videoId ? `https://www.youtube.com/watch?v=${videoId}` : ''))
+
+      // Actor uses "date" field (confirmed from live data)
       const published_at =
+        (item.date        as string) ??
         (item.uploadDate  as string) ??
         (item.publishedAt as string) ??
-        (item.date        as string) ??
         new Date().toISOString()
+
+      // Profile data embedded in first item
+      const subscribers = Number(item.numberOfSubscribers ?? 0)
+      const totalVideos  = Number(item.channelTotalVideos  ?? 0)
+      void subscribers; void totalVideos // used in fetchYTProfile if needed
 
       return {
         platform: 'youtube' as const,
         post_id: `yt_${videoId || Math.random()}`,
         title: String(item.title ?? '').slice(0, 200) || null,
-        caption: String(item.description ?? '').slice(0, 500) || null,
+        caption: String(item.text ?? item.description ?? '').slice(0, 500) || null,
         thumbnail_url: String(item.thumbnailUrl ?? item.thumbnail ?? '') || null,
-        permalink: url || null,
+        permalink: permalink || null,
         published_at: new Date(published_at).toISOString(),
         views, likes, comments,
         shares: 0, saves: 0,
